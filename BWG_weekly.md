@@ -28,31 +28,19 @@ data for ATM machines from 01-06-2016 to 31-12-2019. the cash deman
 column is represented by withdrawals. We see the summary of the data
 below we have 24 missing values in withdrawals Column.
 
-``` r
-## Load Data
-df<- readRDS("cash_demand.rds") 
-summary(df)
-```
+    #>    TransDate           withdrawals     
+    #>  Min.   :2016-06-01   Min.   :  53260  
+    #>  1st Qu.:2017-04-24   1st Qu.: 884290  
+    #>  Median :2018-03-17   Median :1112400  
+    #>  Mean   :2018-03-17   Mean   :1223807  
+    #>  3rd Qu.:2019-02-07   3rd Qu.:1548090  
+    #>  Max.   :2019-12-31   Max.   :2645900  
+    #>                       NA's   :24
 
-    ##    TransDate           withdrawals     
-    ##  Min.   :2016-06-01   Min.   :  53260  
-    ##  1st Qu.:2017-04-24   1st Qu.: 884290  
-    ##  Median :2018-03-17   Median :1112400  
-    ##  Mean   :2018-03-17   Mean   :1223807  
-    ##  3rd Qu.:2019-02-07   3rd Qu.:1548090  
-    ##  Max.   :2019-12-31   Max.   :2645900  
-    ##                       NA's   :24
-
-``` r
-df$TransDate <- 
-  as.Date(df$TransDate)
-summary(is.na(df))
-```
-
-    ##  TransDate       withdrawals    
-    ##  Mode :logical   Mode :logical  
-    ##  FALSE:1309      FALSE:1285     
-    ##                  TRUE :24
+    #>  TransDate       withdrawals    
+    #>  Mode :logical   Mode :logical  
+    #>  FALSE:1309      FALSE:1285     
+    #>                  TRUE :24
 
 ## Preprocessing
 
@@ -61,82 +49,38 @@ which id time series data format in r for formcasting. We use TransDate
 column and date index and the key column as the Groups or categories
 that we want to forecast.
 
-``` r
-df<-
-df %>% 
-    as.data.frame() %>%
-  group_by(TransDate) %>%
-  summarise(withdrawals = sum(withdrawals)) %>%
-  tsibble(index = TransDate)
-
-
-frcst_tsbl<- 
-  df %>% 
-  dplyr::select( 
-    TransDate, withdrawals
-    ) %>% 
-  as_tsibble(index=TransDate)
-```
-
 Check if the time series is complete and fill the missing dates in the
 dataframe. Fill_gaps feature makes it easy to find out the if there is
 any missing date index and it fill those gaps with NA values.
 
-``` r
-#If any data for specific dates is missing, it will produce a date for it and then produce an NA value for that date.
-
-frcst_fill_gaps<-
-  fill_gaps(frcst_tsbl, .full=FALSE)
-
-frcst_fill_gaps %>% summary()
-```
-
-    ##    TransDate           withdrawals     
-    ##  Min.   :2016-06-01   Min.   :  53260  
-    ##  1st Qu.:2017-04-24   1st Qu.: 884290  
-    ##  Median :2018-03-17   Median :1112400  
-    ##  Mean   :2018-03-17   Mean   :1223807  
-    ##  3rd Qu.:2019-02-07   3rd Qu.:1548090  
-    ##  Max.   :2019-12-31   Max.   :2645900  
-    ##                       NA's   :24
+    #>    TransDate           withdrawals     
+    #>  Min.   :2016-06-01   Min.   :  53260  
+    #>  1st Qu.:2017-04-24   1st Qu.: 884290  
+    #>  Median :2018-03-17   Median :1112400  
+    #>  Mean   :2018-03-17   Mean   :1223807  
+    #>  3rd Qu.:2019-02-07   3rd Qu.:1548090  
+    #>  Max.   :2019-12-31   Max.   :2645900  
+    #>                       NA's   :24
 
 Next, we fill any gaps in the time series data using the fill_gaps
 function from the tsibble package. The code also adds year, month, and
 day columns to the tsibble. The missing values in the data are then
 replaced with regression (TSLM) values using the interpolate function.
 
-``` r
-## we need to take care of NA values in data using interpolate function in R.
-## instead of mean or median we use TSLM (regression) values to replace NA values.
-final_data <- 
-  frcst_fill_gaps %>% 
-  model(lm= TSLM(withdrawals~ trend())) %>%
-  #model(arima= ARIMA(withdrawals, stepwise = FALSE)) %>% 
-  interpolate(frcst_fill_gaps)
-
-summary(final_data)
-```
-
-    ##    TransDate           withdrawals     
-    ##  Min.   :2016-06-01   Min.   :  53260  
-    ##  1st Qu.:2017-04-24   1st Qu.: 885490  
-    ##  Median :2018-03-17   Median :1123220  
-    ##  Mean   :2018-03-17   Mean   :1223543  
-    ##  3rd Qu.:2019-02-07   3rd Qu.:1537620  
-    ##  Max.   :2019-12-31   Max.   :2645900
+    #>    TransDate           withdrawals     
+    #>  Min.   :2016-06-01   Min.   :  53260  
+    #>  1st Qu.:2017-04-24   1st Qu.: 885490  
+    #>  Median :2018-03-17   Median :1123220  
+    #>  Mean   :2018-03-17   Mean   :1223543  
+    #>  3rd Qu.:2019-02-07   3rd Qu.:1537620  
+    #>  Max.   :2019-12-31   Max.   :2645900
 
 ## Graph showing the cash demand over the period of 2016 to 2010
 
 The series look good for forecasting and at first glance it looks
 stationary. But to confirm we will use ADF and KPSS test
 
-``` r
-final_data %>% autoplot()
-```
-
-    ## Plot variable not specified, automatically selected `.vars = withdrawals`
-
-![](BWG_weekly_files/figure-gfm/unnamed-chunk-7-1.png)<!-- --> \##
+![](BWG_weekly_files/figure-gfm/unnamed-chunk-6-1.png)<!-- --> \##
 Seasonality check
 
 The graph below shows the time series decomposition of cash demand. The
@@ -146,21 +90,7 @@ data. One common method of seasonal decomposition is to use the
 “additive” method, which assumes that the time series can be modeled as
 the sum of three components.
 
-``` r
-final_data %>%  
-  model(
-    STL(log(withdrawals) ~ 
-         season(period = "week"),
-        #+season(period = "month")+
-        #   season(period = "year"),
-        robust = TRUE)
-  )  %>%
-  components() %>%
-  autoplot() + labs(x = "Observation")+
-  theme(legend.position = "none")
-```
-
-![](BWG_weekly_files/figure-gfm/unnamed-chunk-8-1.png)<!-- --> From the
+![](BWG_weekly_files/figure-gfm/unnamed-chunk-7-1.png)<!-- --> From the
 seasonality plot we see there is no evident trend in the series however
 we can see a solid weekly seasonality pattern.
 
@@ -171,43 +101,18 @@ hypothesis: Series is not stationary, Alternate hypothesis = Series is
 stationary Kpss test Null hypothesis: Series is stationary, Alternate
 hypothesis = Series is not stationary
 
-``` r
-library(tseries)
-```
+    #> 
+    #>  Augmented Dickey-Fuller Test
+    #> 
+    #> data:  final_data$withdrawals
+    #> Dickey-Fuller = -9.2698, Lag order = 10, p-value = 0.01
+    #> alternative hypothesis: stationary
 
-    ## Registered S3 method overwritten by 'quantmod':
-    ##   method            from
-    ##   as.zoo.data.frame zoo
-
-    ## 
-    ## Attaching package: 'tseries'
-
-    ## The following object is masked from 'package:future':
-    ## 
-    ##     value
-
-``` r
-adf.test(final_data$withdrawals); kpss.test(final_data$withdrawals, null="Trend")
-```
-
-    ## Warning in adf.test(final_data$withdrawals): p-value smaller than printed
-    ## p-value
-
-    ## 
-    ##  Augmented Dickey-Fuller Test
-    ## 
-    ## data:  final_data$withdrawals
-    ## Dickey-Fuller = -9.2698, Lag order = 10, p-value = 0.01
-    ## alternative hypothesis: stationary
-
-    ## Warning in kpss.test(final_data$withdrawals, null = "Trend"): p-value smaller
-    ## than printed p-value
-
-    ## 
-    ##  KPSS Test for Trend Stationarity
-    ## 
-    ## data:  final_data$withdrawals
-    ## KPSS Trend = 0.52284, Truncation lag parameter = 7, p-value = 0.01
+    #> 
+    #>  KPSS Test for Trend Stationarity
+    #> 
+    #> data:  final_data$withdrawals
+    #> KPSS Trend = 0.52284, Truncation lag parameter = 7, p-value = 0.01
 
 Adf test test is significant at 0.05% significance level and we can
 reject null hypothesis that series is not stationary and accep that
@@ -219,39 +124,25 @@ opp
 lets repeat both these tests for stationarity after taking first
 difference .
 
-``` r
-df_diff<- final_data %>% mutate(diff_with= difference(withdrawals, 1 )) %>% drop_na()
-adf.test(df_diff$diff_with); kpss.test(df_diff$diff_with, null="Trend")
-```
+    #> 
+    #>  Augmented Dickey-Fuller Test
+    #> 
+    #> data:  df_diff$diff_with
+    #> Dickey-Fuller = -13.014, Lag order = 10, p-value = 0.01
+    #> alternative hypothesis: stationary
 
-    ## Warning in adf.test(df_diff$diff_with): p-value smaller than printed p-value
-
-    ## 
-    ##  Augmented Dickey-Fuller Test
-    ## 
-    ## data:  df_diff$diff_with
-    ## Dickey-Fuller = -13.014, Lag order = 10, p-value = 0.01
-    ## alternative hypothesis: stationary
-
-    ## Warning in kpss.test(df_diff$diff_with, null = "Trend"): p-value greater than
-    ## printed p-value
-
-    ## 
-    ##  KPSS Test for Trend Stationarity
-    ## 
-    ## data:  df_diff$diff_with
-    ## KPSS Trend = 0.0069142, Truncation lag parameter = 7, p-value = 0.1
+    #> 
+    #>  KPSS Test for Trend Stationarity
+    #> 
+    #> data:  df_diff$diff_with
+    #> KPSS Trend = 0.0069142, Truncation lag parameter = 7, p-value = 0.1
 
 Now both of our tests show that differenced series is stationary. So
 this tells us that our series is stationary at first difference. Lets
 look at acf and pcg graphs to find out whether our series following an
 ma or ar process or is it more complex.
 
-``` r
-df_diff  %>% autoplot(diff_with)
-```
-
-![](BWG_weekly_files/figure-gfm/unnamed-chunk-11-1.png)<!-- -->
+![](BWG_weekly_files/figure-gfm/unnamed-chunk-10-1.png)<!-- -->
 
 ## ACF PCF plots
 
@@ -259,25 +150,7 @@ Now we will identify if our series follows an ar(p) or ma(q) or
 arma(p,q) process. figure above shows steps of identifying whethere a
 series follows an ar(p) or ma(q) or arma(p,q) process.
 
-``` r
-pacman::p_load(png)
-
-img <- readPNG('arma.png')
-## Set the plot window dimensions to 8x6 inches
-## Set the plot window dimensions to 8x6 inches
-par(pty="s", mar=c(0,0,0,0), mai=c(0,0,0,0), xpd=NA)
-par(fig=c(0,1,0,1), new=TRUE)
-```
-
-    ## Warning in par(fig = c(0, 1, 0, 1), new = TRUE): calling par(new=TRUE) with no
-    ## plot
-
-``` r
-plot(0:1, 0:1, type="n", xlab="", ylab="", axes=FALSE)
-rasterImage(img, 0, 0, 1, 1)
-```
-
-![](BWG_weekly_files/figure-gfm/unnamed-chunk-12-1.png)<!-- -->
+![](BWG_weekly_files/figure-gfm/unnamed-chunk-11-1.png)<!-- -->
 
 ACF function finds autocorrelation of previous values to current (lagged
 values). Plot of the ACF of shows how autocorrelation coefficients
@@ -289,34 +162,15 @@ the plot above. We don’t see a sudden decay in PACF plot either. as we
 can see significant correlations at lags, 1 to 6. Our series is an ARMA
 series.
 
-``` r
-final_data%>%
-  gg_tsdisplay(difference(withdrawals,  1),
-               plot_type='partial') +
-  labs(title="Seasonally differenced")
-```
-
-    ## Warning: Removed 1 row containing missing values (`geom_line()`).
-
-    ## Warning: Removed 1 rows containing missing values (`geom_point()`).
-
-![](BWG_weekly_files/figure-gfm/unnamed-chunk-13-1.png)<!-- -->
+![](BWG_weekly_files/figure-gfm/unnamed-chunk-12-1.png)<!-- -->
 
 We will use auto_arima function from the forecast package to identify
 the best ARMA process and SARIMA process for our series.
 
-``` r
-## fit an ARIMA model using auto.arima()
-fit <-  final_data %>% model(sarima= ARIMA( 
-  log(withdrawals)~ 0 + pdq( p= 0:5, d=0:2, q= 0:5) + PDQ(P= 0:5,D= 0:2, Q = 0:5), stepwise = FALSE) )
-## print the best ARIMA model
-print(fit)
-```
-
-    ## # A mable: 1 x 1
-    ##                     sarima
-    ##                    <model>
-    ## 1 <ARIMA(1,0,1)(4,1,0)[7]>
+    #> # A mable: 1 x 1
+    #>                     sarima
+    #>                    <model>
+    #> 1 <ARIMA(1,0,1)(4,1,0)[7]>
 
 Auto ARIMA has picked the model with ARIMA(1,0,1)(4,1,0) with weekly
 seasonality.
@@ -340,51 +194,11 @@ from the data.
 The two graph below are showing trend in cash demand over 3 years and
 demand looks very steady.
 
-``` r
-final_data %>% 
-as.data.frame() %>% 
-  mutate(
-    year = lubridate::year(TransDate),
-    month= lubridate::month(TransDate),
-         ) %>% 
-  ggplot()+
-  aes(x= TransDate, y=withdrawals, col= factor(month) )+
-  geom_line()+
-  facet_wrap (~ year, scales = "free")
-```
-
-![](BWG_weekly_files/figure-gfm/unnamed-chunk-15-1.png)<!-- -->
+![](BWG_weekly_files/figure-gfm/unnamed-chunk-14-1.png)<!-- -->
 
 ## Test & Train Data
 
-``` r
-final_data<-
-final_data %>% 
-  mutate(
-        Days =day(TransDate),
-        Weekday_names = weekdays(TransDate),
-        Months =month(TransDate)
-     )
-
-data_split<- "2019-11-01"
-train_data<-
-final_data %>% 
-  filter(TransDate < data_split) 
-
-forecast_end_date= max( final_data$TransDate)
-frct_days= as.double(as.Date(forecast_end_date)+ days(1) -as.Date(data_split) )
-
-future_xreg <-
-  new_data(train_data, n = frct_days) %>%
-  mutate(
-        Days =day(TransDate),
-        Weekday_names = weekdays(TransDate),
-        Months =month(TransDate)
-     )
-frct_days
-```
-
-    ## [1] 61
+    #> [1] 61
 
 We split the data into train and test set . The train set is the data
 below 2019-11-01 and we will forecast for 61 days.
@@ -396,61 +210,19 @@ tell the function to pick the best model from range of parameters we
 will specify an ARIMA mdoel as follows: pdq(p = 0:5, d = 0:2, q = 0:5)
 PDQ(P = 0:5, D = 0:1, Q = 0:5)
 
-``` r
-fit_model <-
-  train_data %>%
-  model(
-    sarima = ARIMA(
-      log(withdrawals) ~ 0 + pdq(p = 0:5, d = 0:2, q = 0:5) + PDQ(P = 0:5, D = 0:1, Q = 0:5),
-      stepwise = FALSE
-    )
-  )
-fit_model %>% print()
-```
+    #> # A mable: 1 x 1
+    #>                     sarima
+    #>                    <model>
+    #> 1 <ARIMA(1,0,1)(4,1,0)[7]>
 
-    ## # A mable: 1 x 1
-    ##                     sarima
-    ##                    <model>
-    ## 1 <ARIMA(1,0,1)(4,1,0)[7]>
-
-``` r
-forecast::checkresiduals(augment(fit_model)%>%
-                           rename(residuals=.resid) %>%
-                           mutate(residuals= log(residuals) ) )
-```
-
-    ## Warning: There was 1 warning in `mutate()`.
-    ## ℹ In argument: `residuals = log(residuals)`.
-    ## Caused by warning in `log()`:
-    ## ! NaNs produced
-
-    ## Warning: Unknown or uninitialised column: `na.action`.
-
-    ## Warning: Unknown or uninitialised column: `method`.
-
-    ## Warning in modeldf.default(object): Could not find appropriate degrees of
-    ## freedom for this model.
-
-![](BWG_weekly_files/figure-gfm/unnamed-chunk-18-1.png)<!-- --> The
+![](BWG_weekly_files/figure-gfm/unnamed-chunk-17-1.png)<!-- --> The
 residual analysis shows that our model is good and acf plot shows very
 few autocorrelation of residuals to its lags and its mostly white noise.
 the histogram of residuals are also pretty much normaly distrubuted.
 
 ## Forecast vs Actual
 
-``` r
-## if we already set n in new data, h is not required in forecast as number of forecast days are provided in new_data with n=  option.
-frcst_data<- 
-fit_model %>% 
-    forecast(new_data = future_xreg
-             )
-frcst_data |>
-  autoplot(
-    final_data %>%  filter(TransDate >= as.Date(data_split) - days(0))
-    ) 
-```
-
-![](BWG_weekly_files/figure-gfm/unnamed-chunk-19-1.png)<!-- --> The plot
+![](BWG_weekly_files/figure-gfm/unnamed-chunk-18-1.png)<!-- --> The plot
 above shows forecast in blue and black line shows the actual values. We
 notice that model is underforecasting at the end of november and third
 week of december and last of december is overforecasted which is due to
@@ -462,101 +234,37 @@ issues and see how our model performs.
 
 ## Train models
 
-``` r
-fit_model <-
-  train_data %>%
-  model(
-    dummy_arima = ARIMA(
-      log(withdrawals) ~ 
-        (Months == 11 & Days > 23) + 
-        (Months == 12 & Days > 14) +
-        (Months == 12 & Days == 24) +
-        (Months == 12 & Days == 25) +
-        (Months == 12 & Days == 26) +
-        (Months == 12 & Days == 27) +
-        (Months == 12 & Days == 28) +
-        (Months == 12 & Days == 29) +
-        (Months == 12 & Days == 30) +
-        (Months == 12 & Days == 31),
-      stepwise = FALSE
-    ),
-    sarima = ARIMA(
-      log(withdrawals) ~ 0 + pdq(p = 0:5, d = 0:2, q = 0:5) + PDQ(P = 0:5, D = 0:1, Q = 0:5),
-      stepwise = FALSE
-    )
-  )
-```
-
-    ## Warning in sqrt(diag(best$var.coef)): NaNs produced
-
-``` r
-fit_model %>% print()
-```
-
-    ## # A mable: 1 x 2
-    ##                             dummy_arima                   sarima
-    ##                                 <model>                  <model>
-    ## 1 <LM w/ ARIMA(1,0,0)(2,1,2)[7] errors> <ARIMA(1,0,1)(4,1,0)[7]>
+    #> # A mable: 1 x 2
+    #>                             dummy_arima                   sarima
+    #>                                 <model>                  <model>
+    #> 1 <LM w/ ARIMA(1,0,0)(2,1,2)[7] errors> <ARIMA(1,0,1)(4,1,0)[7]>
 
 Above we can see the selected ARIMA process for two models.
 
-``` r
-glance(fit_model)
-```
-
-    ## # A tibble: 2 × 8
-    ##   .model      sigma2 log_lik    AIC   AICc   BIC ar_roots   ma_roots  
-    ##   <chr>        <dbl>   <dbl>  <dbl>  <dbl> <dbl> <list>     <list>    
-    ## 1 dummy_arima 0.0247    536. -1040. -1040. -958. <cpl [15]> <cpl [14]>
-    ## 2 sarima      0.0483    120.  -225.  -225. -189. <cpl [29]> <cpl [1]>
+    #> # A tibble: 2 × 8
+    #>   .model      sigma2 log_lik    AIC   AICc   BIC ar_roots   ma_roots  
+    #>   <chr>        <dbl>   <dbl>  <dbl>  <dbl> <dbl> <list>     <list>    
+    #> 1 dummy_arima 0.0247    536. -1040. -1040. -958. <cpl [15]> <cpl [14]>
+    #> 2 sarima      0.0483    120.  -225.  -225. -189. <cpl [29]> <cpl [1]>
 
 We can see that the dummy_arima model has lower AIC and AICs in
 comparison of Two sarima model without dummy variables.
 
-``` r
-augment(fit_model) |>
-  features(.innov, ljung_box, dof = 0, lag = 2 )
-```
-
-    ## # A tibble: 2 × 3
-    ##   .model      lb_stat lb_pvalue
-    ##   <chr>         <dbl>     <dbl>
-    ## 1 dummy_arima  44.7    2.01e-10
-    ## 2 sarima        0.990  6.10e- 1
+    #> # A tibble: 2 × 3
+    #>   .model      lb_stat lb_pvalue
+    #>   <chr>         <dbl>     <dbl>
+    #> 1 dummy_arima  44.7    2.01e-10
+    #> 2 sarima        0.990  6.10e- 1
 
 ljun_box test shows high statistis 44.65 for dummy_arima means that our
 model is good.
 
 ## best_model
 
-``` r
-best_model = "dummy_arima"
-forecast::checkresiduals(augment(fit_model)%>%
-                           filter(.model==best_model)%>%
-                           rename(residuals=.resid) %>%
-                           mutate(residuals= log(residuals) ) )
-```
+![](BWG_weekly_files/figure-gfm/unnamed-chunk-22-1.png)<!-- -->
 
-    ## Warning: There was 1 warning in `mutate()`.
-    ## ℹ In argument: `residuals = log(residuals)`.
-    ## Caused by warning in `log()`:
-    ## ! NaNs produced
-
-    ## Warning: Unknown or uninitialised column: `na.action`.
-
-    ## Warning: Unknown or uninitialised column: `method`.
-
-    ## Warning in modeldf.default(object): Could not find appropriate degrees of
-    ## freedom for this model.
-
-![](BWG_weekly_files/figure-gfm/unnamed-chunk-23-1.png)<!-- -->
-
-``` r
-augment(fit_model)%>%filter(.model==best_model)%>% rename(residuals=.resid) %>%as.data.frame() %>%  summarise(res_mean= mean(residuals))
-```
-
-    ##   res_mean
-    ## 1  28921.8
+    #>   res_mean
+    #> 1  28921.8
 
 The time plot of the residuals shows that the variation of the residuals
 stays much the same across the historical data. Therefore the residual
@@ -567,47 +275,18 @@ quite good.
 
 ## Create data for forecast
 
-``` r
-## if we already set n in new data, h is not required in forecast as number of forecast days are provided in new_data with n=  option.
-frcst_data<- 
-fit_model %>% 
-    forecast(new_data = future_xreg
-             )
-frcst_data |>
-  autoplot(
-    final_data %>%  filter(TransDate >= as.Date(data_split) - days(0))
-    ) 
-```
-
-![](BWG_weekly_files/figure-gfm/unnamed-chunk-25-1.png)<!-- --> Dummy
+![](BWG_weekly_files/figure-gfm/unnamed-chunk-24-1.png)<!-- --> Dummy
 forecast shown in Red is much better than sarima forecast in Green and
 it captures the last week of November and december much better compared
 to sarima model without dummies.
 
-``` r
-frcst_data %>% 
-  as_data_frame() %>% 
-  select(TransDate,.model, .mean) %>% 
-  left_join(
-    final_data %>%filter(TransDate >= as.Date(data_split) - days(0)) %>% select(TransDate, withdrawals),
-          by= "TransDate") %>% 
-  mutate(diff= (withdrawals - .mean)^2 ) %>% 
-  group_by(.model) %>% 
-  summarise(rmse= sqrt( mean(diff) )) %>% 
-  arrange(rmse)
-```
+    #> # A tibble: 2 × 2
+    #>   .model         rmse
+    #>   <chr>         <dbl>
+    #> 1 dummy_arima 152271.
+    #> 2 sarima      340813.
 
-    ## Warning: `as_data_frame()` was deprecated in tibble 2.0.0.
-    ## ℹ Please use `as_tibble()` instead.
-    ## ℹ The signature and semantics have changed, see `?as_tibble`.
-
-    ## # A tibble: 2 × 2
-    ##   .model         rmse
-    ##   <chr>         <dbl>
-    ## 1 dummy_arima 152271.
-    ## 2 sarima      340813.
-
-The the error rmse is also way lower for dummy variable.
+The error rmse is also way lower for dummy variable.
 
 we can generate a new time series that are similar to the observed
 series. To achieve this, we utilize a type of bootstrapping known as the
@@ -635,53 +314,20 @@ new variations of the original time series.
 
 In conclusion, our proposed method utilizes a combination of Box-Cox
 transformation, STL decomposition, and blocked bootstrapping to generate
-new time series that are similar to the observed series. This method can
-be useful in various applications where a better understanding of the
-underlying structure of the time series is desired.
+new time series that are similar to the observed series.
 
 ## create bootstraped seies 100 times
 
-``` r
-set.seed(121)
-sim_forecast_data<-
-fit_model[best_model] %>% 
-  generate(new_data = future_xreg, times = 100, bootstrap = TRUE , bootstrap_block_size = 30)
-
-final_data %>%  
-  filter(TransDate >= as.Date(data_split) - days(90)) %>% 
-  ggplot(aes(x = TransDate)) +
-  geom_line(aes(y = withdrawals)) +
-  geom_line(data = sim_forecast_data, aes(y = .sim, colour = as.factor(.rep) )) +
-  #coord_polar()+
-  labs(title="Daily cash demand", y="£GBP" ) +
-  guides(col = FALSE)
-```
-
-    ## Warning: The `<scale>` argument of `guides()` cannot be `FALSE`. Use "none" instead as
-    ## of ggplot2 3.3.4.
-
-![](BWG_weekly_files/figure-gfm/unnamed-chunk-27-1.png)<!-- --> Now we
+![](BWG_weekly_files/figure-gfm/unnamed-chunk-26-1.png)<!-- --> Now we
 can forecast for all 100 bootstrap series with our tarined model and in
 the end we can forecast using the average of all forecasts. the
 resulting forecast can be seen below.
 
 ## Aggregated sim forecast
 
-``` r
-sim_forecast_data1<-
-sim_forecast_data %>% as.data.frame() %>%  group_by(TransDate) %>% 
-  summarise(.sim= mean(.sim)) %>% 
-  tsibble(index = TransDate)
+![](BWG_weekly_files/figure-gfm/unnamed-chunk-27-1.png)<!-- -->
 
-final_data %>%  
-  filter(TransDate >= as.Date(data_split) - days(90)) %>% 
-  ggplot(aes(x = TransDate)) +
-  geom_line(aes(y = withdrawals)) +
-  geom_line(aes(y = .sim, colour = "red" ),
-    data = sim_forecast_data1) +
-  #coord_polar()+
-  labs(title="Daily cash demand", y="£GBP" ) +
-  guides(col = FALSE)
-```
-
-![](BWG_weekly_files/figure-gfm/unnamed-chunk-28-1.png)<!-- -->
+    #> # A tibble: 1 × 1
+    #>      rmse
+    #>     <dbl>
+    #> 1 155982.
