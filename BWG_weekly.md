@@ -5,6 +5,9 @@ Cash Deman Forecast App
 
 ## Intoduction:
 
+link to the r code is here:
+<https://github.com/WaleedIdrees/r_studio/blob/main/BWG_weekly.Rmd>
+
 Steps to forecast Cash demand:
 
 - Load Required Libraries: Load the required libraries for the script,
